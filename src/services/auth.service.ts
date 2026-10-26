@@ -71,24 +71,27 @@ export const authService = {
       };
     }
   },
-
-  /**
+   /**
    * Đăng ký tài khoản mới
-   * Email xác nhận sẽ được gửi tự động bởi Supabase
    */
   async signUp(
     email: string,
-    password: string
+    password: string,
+    username?: string
   ): Promise<ApiResponse<{ user: User }>> {
     try {
-      // Tạo URL redirect sau khi xác nhận email
-      const redirectUrl = `${window.location.origin}/verify-email`;
+      const redirectUrl = `${window.location.origin}${window.location.pathname}#/verify-email`;
+      const cleanUsername = username?.trim() || email.split('@')[0];
 
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: redirectUrl,
+          data: {
+            username: cleanUsername,
+            display_name: cleanUsername,
+          },
         },
       });
 
@@ -106,12 +109,65 @@ export const authService = {
         };
       }
 
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email,
+          username: cleanUsername,
+          role: 'user',
+          is_banned: false,
+        });
+      } catch (e) {
+        console.warn('Lưu username vào profiles:', e);
+      }
+
       return {
         data: { user: data.user },
         error: null,
       };
     } catch (err) {
       console.error('[Auth] Lỗi đăng ký:', err);
+      return {
+        data: null,
+        error: handleSupabaseError(err),
+      };
+    }
+  },
+
+  /**
+   * Cập nhật thông tin profile (tên người dùng, avatar_url, etc.)
+   */
+  async updateProfile(
+    userId: string,
+    updates: Partial<Profile>
+  ): Promise<ApiResponse<Profile>> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          data: null,
+          error: handleSupabaseError(error),
+        };
+      }
+
+      if (updates.username) {
+        await supabase.auth.updateUser({
+          data: { username: updates.username, display_name: updates.username },
+        });
+      }
+
+      return {
+        data: data as Profile,
+        error: null,
+      };
+    } catch (err) {
+      console.error('[Auth] Lỗi cập nhật profile:', err);
       return {
         data: null,
         error: handleSupabaseError(err),
