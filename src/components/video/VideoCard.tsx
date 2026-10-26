@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Edit2, Trash2, Calendar, HardDrive, Tag } from 'lucide-react';
+import { Play, Edit2, Trash2, Calendar, Tag } from 'lucide-react';
 import { Video } from '../../types';
 import { formatDate, formatFileSize } from '../../lib/utils';
 import { videoService } from '../../services/video.service';

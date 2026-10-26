@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Film, HardDrive, Shield, ShieldAlert, Trash2, Calendar, User, Eye } from 'lucide-react';
+import { ArrowLeft, Film, HardDrive, Shield, ShieldAlert, Trash2, Calendar, Eye } from 'lucide-react';
 import { Profile, Video } from '../../types';
 import { formatDate, formatFileSize } from '../../lib/utils';
 import { adminService } from '../../services/admin.service';

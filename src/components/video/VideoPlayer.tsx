@@ -12,7 +12,7 @@ interface VideoPlayerProps {
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   src,
   poster,
-  title,
+  title: _title,
   downloadFilename = 'gameclip.mp4',
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);

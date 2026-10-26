@@ -21,7 +21,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({ onUploadSuccess })
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewThumbnail, setPreviewThumbnail] = useState<string | null>(null);
-  const [thumbnailBlob, setThumbnailBlob] = useState<Blob | null>(null);
+  const [_thumbnailBlob, setThumbnailBlob] = useState<Blob | null>(null);
 
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');

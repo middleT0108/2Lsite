@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, ShieldAlert, ArrowLeft, Eye, Lock, Unlock, Search, Calendar, Film, HardDrive } from 'lucide-react';
+import { Shield, ShieldAlert, ArrowLeft, Eye, Lock, Unlock, Search, Film, HardDrive } from 'lucide-react';
 import { UserWithStats } from '../../types';
 import { formatDate, formatFileSize } from '../../lib/utils';
 import { useAdmin } from '../../hooks/useAdmin';

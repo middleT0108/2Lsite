@@ -10,7 +10,6 @@ import {
   AlertCircle,
   RefreshCw,
   Check,
-  Mail,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../contexts/ToastContext';
