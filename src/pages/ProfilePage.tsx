@@ -1,23 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, Palette, Check, ArrowLeft, Shield, Calendar, KeyRound, Sparkles } from 'lucide-react';
+import {
+  User,
+  Lock,
+  Palette,
+  Check,
+  ArrowLeft,
+  Shield,
+  Calendar,
+  KeyRound,
+  Sparkles,
+  Smile,
+  Save,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
+import { supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 import { BackgroundTheme } from '../components/layout/MotionBackground';
 import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
   const { showToast } = useToast();
 
   const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>('cyber-purple');
+  const [usernameInput, setUsernameInput] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  // Tên người dùng hiển thị: Ưu tiên username -> user_metadata -> tên trước dấu @ của email
+  const displayName =
+    profile?.username ||
+    (user?.user_metadata?.username as string) ||
+    (user?.user_metadata?.display_name as string) ||
+    profile?.email?.split('@')[0] ||
+    user?.email?.split('@')[0] ||
+    'User';
 
   useEffect(() => {
     const saved = (localStorage.getItem('2lsite_theme') as BackgroundTheme) || 'cyber-purple';
     setCurrentTheme(saved);
   }, []);
+
+  // Điền tên người dùng hiện tại vào ô input
+  useEffect(() => {
+    if (profile?.username) {
+      setUsernameInput(profile.username);
+    } else if (user?.user_metadata?.username) {
+      setUsernameInput(user.user_metadata.username as string);
+    } else if (user?.email) {
+      setUsernameInput(user.email.split('@')[0]);
+    }
+  }, [profile?.username, user]);
 
   const themes: { id: BackgroundTheme; name: string; desc: string; colors: string }[] = [
     {
@@ -52,13 +88,46 @@ export const ProfilePage: React.FC = () => {
     },
   ];
 
-    const handleSelectTheme = (themeId: BackgroundTheme) => {
+  const handleSelectTheme = (themeId: BackgroundTheme) => {
     setCurrentTheme(themeId);
     localStorage.setItem('2lsite_theme', themeId);
     // Bắn event để MotionBackground cập nhật realtime ngay lập tức
     window.dispatchEvent(new CustomEvent('2lsite-theme-change', { detail: themeId }));
     window.dispatchEvent(new Event('storage'));
     showToast(`Đã áp dụng giao diện: ${themes.find((t) => t.id === themeId)?.name}`, 'success');
+  };
+
+  // Xử lý lưu tên người dùng mới
+  const handleSaveUsername = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = usernameInput.trim();
+    if (!clean) {
+      showToast('Tên người dùng không được để trống', 'error');
+      return;
+    }
+    if (clean.length < 2 || clean.length > 30) {
+      showToast('Tên người dùng từ 2 đến 30 ký tự', 'error');
+      return;
+    }
+
+    setIsSavingName(true);
+    try {
+      if (updateProfile) {
+        const res = await updateProfile({ username: clean });
+        if (res?.error) {
+          showToast(res.error, 'error');
+          return;
+        }
+      } else if (user?.id) {
+        await supabase.from('profiles').update({ username: clean }).eq('id', user.id);
+        await supabase.auth.updateUser({ data: { username: clean, display_name: clean } });
+      }
+      showToast('Cập nhật tên người dùng thành công!', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Không thể cập nhật tên', 'error');
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
   return (
@@ -75,12 +144,13 @@ export const ProfilePage: React.FC = () => {
       {/* Header Profile */}
       <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="flex items-center space-x-4">
+          {/* Avatar hiển thị chữ cái đầu của Tên người dùng */}
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 text-white flex items-center justify-center font-bold text-2xl shadow-lg shadow-purple-950/50">
-            {profile?.email ? profile.email.charAt(0).toUpperCase() : 'U'}
+            {displayName.charAt(0).toUpperCase()}
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-white">{profile?.email || user?.email}</h1>
+              <h1 className="text-xl font-bold text-white">{displayName}</h1>
               {profile?.role === 'admin' ? (
                 <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800/40 flex items-center">
                   <Shield className="w-3 h-3 mr-1" /> Admin
@@ -91,6 +161,7 @@ export const ProfilePage: React.FC = () => {
                 </span>
               )}
             </div>
+            <p className="text-xs text-slate-400 mt-0.5">{profile?.email || user?.email}</p>
             <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-purple-400" />
               Gia nhập từ: {profile?.created_at ? formatDate(profile.created_at) : 'Gần đây'}
@@ -110,7 +181,42 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Phần 1: Tùy Chỉnh Giao Diện Nền Động (Motion Background) */}
+      {/* Phần 1: Đổi Tên Hiển Thị (Username) */}
+      <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-5">
+        <div className="flex items-center space-x-3 pb-3 border-b border-slate-800">
+          <div className="p-2 rounded-xl bg-cyan-900/40 text-cyan-400">
+            <Smile className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">Tên người dùng hiển thị</h2>
+            <p className="text-xs text-slate-400">
+              Tên hiển thị thay cho email trên thanh điều hướng và kho highlight
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveUsername} className="flex flex-col sm:flex-row gap-4 items-end max-w-xl">
+          <div className="flex-1 w-full">
+            <Input
+              label="Tên hiển thị của bạn"
+              type="text"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              placeholder="Nhập tên người dùng mới..."
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={isSavingName}
+            className="w-full sm:w-auto whitespace-nowrap"
+          >
+            <Save className="w-4 h-4 mr-2" /> Lưu tên mới
+          </Button>
+        </form>
+      </div>
+
+      {/* Phần 2: Tùy Chỉnh Giao Diện Nền Động (Motion Background) */}
       <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-6">
         <div className="flex items-center space-x-3 pb-4 border-b border-slate-800">
           <div className="p-2 rounded-xl bg-purple-900/40 text-purple-400">
@@ -163,7 +269,7 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Phần 2: Bảo mật & Tài khoản */}
+      {/* Phần 3: Bảo mật & Tài khoản */}
       <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex items-center space-x-3 pb-3 border-b border-slate-800">
           <div className="p-2 rounded-xl bg-indigo-900/40 text-indigo-400">
