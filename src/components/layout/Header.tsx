@@ -91,7 +91,7 @@ const Header: React.FC = () => {
           >
             <Gamepad2 className="w-7 h-7 text-purple-400 group-hover:text-purple-300 transition-colors" />
             <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-              GameClips
+              2Lsite
             </span>
           </Link>
 
