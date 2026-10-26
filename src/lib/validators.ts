@@ -30,11 +30,7 @@ export const registerSchema = z
       .email('Email không hợp lệ'),
     password: z
       .string()
-      .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
-      .refine((val) => hasUpperCase.test(val), 'Mật khẩu phải có ít nhất 1 chữ hoa')
-      .refine((val) => hasLowerCase.test(val), 'Mật khẩu phải có ít nhất 1 chữ thường')
-      .refine((val) => hasDigit.test(val), 'Mật khẩu phải có ít nhất 1 chữ số')
-      .refine((val) => hasSpecialChar.test(val), 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt'),
+      .min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
     confirmPassword: z
       .string()
       .min(1, 'Xác nhận mật khẩu không được để trống'),
