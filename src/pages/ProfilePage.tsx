@@ -52,10 +52,11 @@ export const ProfilePage: React.FC = () => {
     },
   ];
 
-  const handleSelectTheme = (themeId: BackgroundTheme) => {
+    const handleSelectTheme = (themeId: BackgroundTheme) => {
     setCurrentTheme(themeId);
     localStorage.setItem('2lsite_theme', themeId);
-    // Bắn event để MotionBackground cập nhật realtime
+    // Bắn event để MotionBackground cập nhật realtime ngay lập tức
+    window.dispatchEvent(new CustomEvent('2lsite-theme-change', { detail: themeId }));
     window.dispatchEvent(new Event('storage'));
     showToast(`Đã áp dụng giao diện: ${themes.find((t) => t.id === themeId)?.name}`, 'success');
   };
