@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, Palette, Check, ArrowLeft, Shield, Calendar, KeyRound, Sparkles } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../contexts/ToastContext';
-import { formatDate } from '../../lib/utils';
-import { BackgroundTheme } from '../../components/layout/MotionBackground';
-import Button from '../../components/ui/Button';
+import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../contexts/ToastContext';
+import { formatDate } from '../lib/utils';
+import { BackgroundTheme } from '../components/layout/MotionBackground';
+import Button from '../components/ui/Button';
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
