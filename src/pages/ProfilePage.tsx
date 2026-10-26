@@ -7,12 +7,12 @@ import {
   ArrowLeft,
   Shield,
   Calendar,
-  Sparkles,
   Save,
   MailCheck,
   CheckCircle2,
   AlertTriangle,
-  RotateCw,
+  Send,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
@@ -31,46 +31,36 @@ export const ProfilePage: React.FC = () => {
   const [usernameInput, setUsernameInput] = useState('');
   const [isSavingName, setIsSavingName] = useState(false);
 
-  // Tên người dùng realtime từ localStorage
+  // Tên người dùng hiển thị
   const [localUsername, setLocalUsername] = useState<string | null>(() => {
     return localStorage.getItem('2lsite_username');
   });
 
-  // Trạng thái xác thực email realtime từ Supabase server
+  // Trạng thái xác minh Gmail THỰC TẾ: Chỉ true khi người dùng đã nhập mã xác thực
   const [isEmailConfirmed, setIsEmailConfirmed] = useState<boolean>(() => {
-    return Boolean(user?.email_confirmed_at);
+    return Boolean(user?.user_metadata?.gmail_verified);
   });
+
   const [sendingConfirm, setSendingConfirm] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // Kiểm tra trạng thái xác thực trực tiếp từ server Supabase
-  const checkRealtimeEmailStatus = async () => {
-    setIsCheckingAuth(true);
-    try {
-      const { data, error } = await supabase.auth.getUser();
-      if (!error && data?.user) {
-        const confirmed = Boolean(data.user.email_confirmed_at);
-        setIsEmailConfirmed(confirmed);
-        return confirmed;
-      }
-    } catch (err) {
-      console.warn('Lỗi kiểm tra email status:', err);
-    } finally {
-      setIsCheckingAuth(false);
-    }
-    return Boolean(user?.email_confirmed_at);
-  };
-
+  // Kiểm tra trạng thái metadata mới nhất từ Supabase
   useEffect(() => {
-    checkRealtimeEmailStatus();
+    const checkStatus = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setIsEmailConfirmed(Boolean(data.user.user_metadata?.gmail_verified));
+      }
+    };
+    checkStatus();
   }, [user]);
 
-  // Tên người dùng hiển thị: Ưu tiên localUsername -> profile -> metadata -> email
   const displayName =
     localUsername ||
     profile?.username ||
     (user?.user_metadata?.username as string) ||
-    (user?.user_metadata?.display_name as string) ||
     profile?.email?.split('@')[0] ||
     user?.email?.split('@')[0] ||
     'User';
@@ -80,72 +70,35 @@ export const ProfilePage: React.FC = () => {
     setCurrentTheme(saved);
   }, []);
 
-  // Điền tên người dùng hiện tại vào ô input
   useEffect(() => {
     if (localUsername) {
       setUsernameInput(localUsername);
     } else if (profile?.username) {
       setUsernameInput(profile.username);
-    } else if (user?.user_metadata?.username) {
-      setUsernameInput(user.user_metadata.username as string);
     } else if (user?.email) {
       setUsernameInput(user.email.split('@')[0]);
     }
   }, [localUsername, profile?.username, user]);
 
   const themes: { id: BackgroundTheme; name: string; desc: string; colors: string }[] = [
-    {
-      id: 'cyber-purple',
-      name: 'Cyberpunk Purple (Mặc định)',
-      desc: 'Tím Neon huyền ảo kết hợp Cyan',
-      colors: 'from-purple-600 via-indigo-600 to-cyan-500',
-    },
-    {
-      id: 'neon-blue',
-      name: 'Electric Neon Blue',
-      desc: 'Xanh dương công nghệ cao & sắc sảo',
-      colors: 'from-cyan-500 via-blue-600 to-sky-400',
-    },
-    {
-      id: 'matrix-green',
-      name: 'Matrix Hacker Green',
-      desc: 'Xanh ngọc lục bảo phong cách hacker',
-      colors: 'from-emerald-500 via-teal-600 to-green-400',
-    },
-    {
-      id: 'sunset-fire',
-      name: 'Sunset Inferno',
-      desc: 'Cam đỏ rực cháy nhiệt huyết gaming',
-      colors: 'from-rose-600 via-orange-500 to-amber-400',
-    },
-    {
-      id: 'galaxy-dark',
-      name: 'Deep Galaxy',
-      desc: 'Huyền bí tối giản như không gian vũ trụ',
-      colors: 'from-indigo-900 via-purple-950 to-slate-900',
-    },
+    { id: 'cyber-purple', name: 'Cyberpunk Purple (Mặc định)', desc: 'Tím Neon huyền ảo kết hợp Cyan', colors: 'from-purple-600 via-indigo-600 to-cyan-500' },
+    { id: 'neon-blue', name: 'Electric Neon Blue', desc: 'Xanh dương công nghệ cao & sắc sảo', colors: 'from-cyan-500 via-blue-600 to-sky-400' },
+    { id: 'matrix-green', name: 'Matrix Hacker Green', desc: 'Xanh ngọc lục bảo phong cách hacker', colors: 'from-emerald-500 via-teal-600 to-green-400' },
+    { id: 'sunset-fire', name: 'Sunset Inferno', desc: 'Cam đỏ rực cháy nhiệt huyết gaming', colors: 'from-rose-600 via-orange-500 to-amber-400' },
+    { id: 'galaxy-dark', name: 'Deep Galaxy', desc: 'Huyền bí tối giản như không gian vũ trụ', colors: 'from-indigo-900 via-purple-950 to-slate-900' },
   ];
 
   const handleSelectTheme = (themeId: BackgroundTheme) => {
     setCurrentTheme(themeId);
     localStorage.setItem('2lsite_theme', themeId);
     window.dispatchEvent(new CustomEvent('2lsite-theme-change', { detail: themeId }));
-    window.dispatchEvent(new Event('storage'));
     showToast(`Đã áp dụng giao diện: ${themes.find((t) => t.id === themeId)?.name}`, 'success');
   };
 
-  // Xử lý lưu tên người dùng mới
   const handleSaveUsername = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = usernameInput.trim();
-    if (!clean) {
-      showToast('Tên người dùng không được để trống', 'error');
-      return;
-    }
-    if (clean.length < 2 || clean.length > 30) {
-      showToast('Tên người dùng từ 2 đến 30 ký tự', 'error');
-      return;
-    }
+    if (!clean) return showToast('Tên không được để trống', 'error');
 
     setIsSavingName(true);
     try {
@@ -153,65 +106,74 @@ export const ProfilePage: React.FC = () => {
       localStorage.setItem('2lsite_username', clean);
       window.dispatchEvent(new CustomEvent('2lsite-username-change', { detail: clean }));
 
-      await supabase.auth.updateUser({
-        data: { username: clean, display_name: clean },
-      });
-
+      await supabase.auth.updateUser({ data: { username: clean, display_name: clean } });
       if (user?.id) {
         await supabase.from('profiles').update({ username: clean }).eq('id', user.id);
       }
-
-      if (updateProfile) {
-        await updateProfile({ username: clean });
-      }
+      if (updateProfile) await updateProfile({ username: clean });
 
       showToast('Cập nhật tên người dùng thành công!', 'success');
     } catch (err: any) {
-      showToast(err?.message || 'Không thể cập nhật tên', 'error');
+      showToast(err?.message || 'Lỗi lưu tên', 'error');
     } finally {
       setIsSavingName(false);
     }
   };
 
-  // Gửi email xác nhận Gmail
+  // 1. Gửi mã xác nhận về Gmail
   const handleSendVerificationEmail = async () => {
     if (!user?.email || sendingConfirm) return;
     setSendingConfirm(true);
     try {
       const redirectUrl = window.location.origin + window.location.pathname + '#/profile';
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: user.email,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: redirectUrl,
       });
 
-      if (error) {
-        showToast(error.message, 'error');
-      } else {
-        showToast('Đã gửi email xác nhận! Vui lòng kiểm tra hộp thư (cả mục Spam/Rác) của bạn.', 'success');
-      }
+      if (error) throw error;
+
+      setShowOtpInput(true);
+      showToast('Đã gửi mã xác nhận 6 số về Gmail của bạn!', 'success');
     } catch (err: any) {
-      showToast('Không thể gửi email xác nhận lúc này.', 'error');
+      showToast(err?.message || 'Không thể gửi email lúc này. Vui lòng thử lại sau.', 'error');
     } finally {
       setSendingConfirm(false);
     }
   };
 
-  // Nút kiểm tra lại trạng thái xác thực
-  const handleRefreshStatus = async () => {
-    const isNowConfirmed = await checkRealtimeEmailStatus();
-    if (isNowConfirmed) {
-      showToast('Chúc mừng! Gmail của bạn đã được xác thực thành công.', 'success');
-    } else {
-      showToast('Gmail vẫn chưa được xác nhận. Vui lòng bấm vào link trong thư gửi về Gmail của bạn.', 'warning');
+  // 2. Xác thực mã 6 số người dùng nhập
+  const handleConfirmOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp) return showToast('Vui lòng nhập mã 6 số từ Gmail', 'error');
+
+    setIsVerifyingOtp(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: user!.email!,
+        token: cleanOtp,
+        type: 'recovery',
+      });
+
+      if (error) throw new Error('Mã xác nhận không đúng hoặc đã hết hạn.');
+
+      // ĐÁNH DẤU CHÍNH THỨC: gmail_verified = true
+      await supabase.auth.updateUser({
+        data: { gmail_verified: true, verified_at: new Date().toISOString() },
+      });
+
+      setIsEmailConfirmed(true);
+      setShowOtpInput(false);
+      showToast('Chúc mừng! Gmail của bạn đã được xác minh thành công.', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Xác nhận thất bại', 'error');
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Nút quay lại */}
       <button
         onClick={() => navigate('/dashboard')}
         className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
@@ -239,9 +201,7 @@ export const ProfilePage: React.FC = () => {
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-              <span>{profile?.email || user?.email}</span>
-            </p>
+            <p className="text-xs text-slate-400 mt-1">{profile?.email || user?.email}</p>
             <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" />
               <span>Tham gia: {formatDate(profile?.created_at || user?.created_at || new Date())}</span>
@@ -250,7 +210,7 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Form đổi Tên người dùng hiển thị */}
+      {/* Form đổi Tên */}
       <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center space-x-3 mb-6">
           <div className="p-2.5 rounded-xl bg-purple-950/60 text-purple-400 border border-purple-800/40">
@@ -258,7 +218,7 @@ export const ProfilePage: React.FC = () => {
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Tên người dùng (Display Name)</h2>
-            <p className="text-xs text-slate-400">Tên này sẽ hiển thị trên thanh Header và tiêu đề thay cho địa chỉ Gmail</p>
+            <p className="text-xs text-slate-400">Tên này sẽ hiển thị trên Header thay cho địa chỉ Gmail</p>
           </div>
         </div>
 
@@ -268,23 +228,16 @@ export const ProfilePage: React.FC = () => {
             type="text"
             value={usernameInput}
             onChange={(e) => setUsernameInput(e.target.value)}
-            placeholder="Ví dụ: Trung, GamerPro, Shadow..."
-            maxLength={30}
+            placeholder="Ví dụ: Trung, GamerPro..."
           />
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            loading={isSavingName}
-            className="w-full sm:w-auto"
-          >
+          <Button type="submit" variant="primary" size="sm" loading={isSavingName}>
             <Save className="w-4 h-4 mr-2" />
             Lưu tên mới
           </Button>
         </form>
       </div>
 
-      {/* Tùy chỉnh Giao diện / Theme */}
+      {/* Themes */}
       <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-6">
         <div className="flex items-center space-x-3">
           <div className="p-2.5 rounded-xl bg-indigo-950/60 text-indigo-400 border border-indigo-800/40">
@@ -292,7 +245,7 @@ export const ProfilePage: React.FC = () => {
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Chủ đề giao diện (Theme Gamers)</h2>
-            <p className="text-xs text-slate-400">Chọn tông màu nền động dạng sóng neon hiện đại theo phong cách của bạn</p>
+            <p className="text-xs text-slate-400">Chọn tông màu nền động dạng sóng neon hiện đại</p>
           </div>
         </div>
 
@@ -316,17 +269,7 @@ export const ProfilePage: React.FC = () => {
                     </div>
                   )}
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors">
-                    {theme.name}
-                  </h3>
-                  {isSelected && (
-                    <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider bg-purple-950/80 px-2 py-0.5 rounded-md border border-purple-800/40">
-                      Đang dùng
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-sm font-semibold text-white">{theme.name}</h3>
                 <p className="text-xs text-slate-400 mt-1">{theme.desc}</p>
               </div>
             );
@@ -334,15 +277,15 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Khung Xác thực Gmail */}
-      <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl">
-        <div className="flex items-center space-x-3 mb-6">
+      {/* KHUNG XÁC THỰC GMAIL */}
+      <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex items-center space-x-3 mb-2">
           <div className="p-2.5 rounded-xl bg-purple-950/60 text-purple-400 border border-purple-800/40">
             <MailCheck className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Xác thực Gmail</h2>
-            <p className="text-xs text-slate-400">Xác thực địa chỉ email để bảo vệ tài khoản và khôi phục khi cần thiết</p>
+            <p className="text-xs text-slate-400">Xác thực email để có thể khôi phục tài khoản khi quên mật khẩu</p>
           </div>
         </div>
 
@@ -363,43 +306,53 @@ export const ProfilePage: React.FC = () => {
             <p className="text-xs text-slate-400">
               {isEmailConfirmed
                 ? 'Gmail của bạn đã được liên kết và xác minh an toàn.'
-                : 'Nhấn vào nút bên cạnh để gửi email liên kết xác minh tài khoản của bạn.'}
+                : 'Tài khoản chưa xác minh sẽ không thể dùng tính năng Quên mật khẩu.'}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div>
             {isEmailConfirmed ? (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-sm font-medium">
                 <Check className="w-4 h-4" /> Đã xác thực
               </div>
             ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  loading={sendingConfirm}
-                  onClick={handleSendVerificationEmail}
-                >
-                  <MailCheck className="w-4 h-4 mr-2" />
-                  Gửi email xác nhận
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  loading={isCheckingAuth}
-                  onClick={handleRefreshStatus}
-                  title="Kiểm tra lại trạng thái sau khi đã click link trong Gmail"
-                >
-                  <RotateCw className={`w-4 h-4 mr-1.5 ${isCheckingAuth ? 'animate-spin' : ''}`} />
-                  Kiểm tra lại
-                </Button>
-              </>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                loading={sendingConfirm}
+                onClick={handleSendVerificationEmail}
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Gửi mã xác nhận Gmail
+              </Button>
             )}
           </div>
         </div>
+
+        {/* Ô nhập mã OTP 6 số hiện ra sau khi bấm Gửi mã */}
+        {!isEmailConfirmed && showOtpInput && (
+          <form onSubmit={handleConfirmOtp} className="p-4 rounded-xl border border-purple-800/50 bg-purple-950/20 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-purple-300">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Nhập mã số xác nhận vừa gửi đến Gmail của bạn:</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                placeholder="Nhập mã số từ Gmail"
+                className="flex-1 bg-slate-900 border border-purple-500/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400"
+                autoFocus
+              />
+              <Button type="submit" variant="primary" size="sm" loading={isVerifyingOtp}>
+                <Check className="w-4 h-4 mr-1.5" />
+                Xác nhận ngay
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
