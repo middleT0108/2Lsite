@@ -139,12 +139,6 @@ const RegisterPage: React.FC = () => {
                   error={errors.password?.message}
                   {...register('password')}
                 />
-                {/* Thanh đo độ mạnh mật khẩu */}
-                {watchedPassword && (
-                  <div className="mt-2">
-                    <PasswordStrengthBar password={watchedPassword} />
-                  </div>
-                )}
               </div>
 
               <Input
