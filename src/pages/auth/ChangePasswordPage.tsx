@@ -23,18 +23,15 @@ import PasswordStrengthBar from '../../components/ui/PasswordStrengthBar';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { APP_CONFIG } from '../../types';
 
-// Type cho form mật khẩu hiện tại
 interface CurrentPasswordFormData {
   currentPassword: string;
 }
 
-// Type cho form mật khẩu mới
 interface NewPasswordFormData {
   password: string;
   confirmPassword: string;
 }
 
-// Các bước trong quy trình đổi mật khẩu
 type Step = 'verify' | 'otp' | 'newPassword';
 
 const ChangePasswordPage: React.FC = () => {
@@ -42,25 +39,20 @@ const ChangePasswordPage: React.FC = () => {
   const { profile, loading: authLoading } = useAuth();
   const { showToast } = useToast();
 
-  // State quản lý
   const [currentStep, setCurrentStep] = useState<Step>('verify');
   const [otpCode, setOtpCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
 
-  // Form cho bước xác nhận mật khẩu hiện tại
   const currentPasswordForm = useForm<CurrentPasswordFormData>();
 
-  // Form cho bước đặt mật khẩu mới
   const newPasswordForm = useForm<NewPasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
   });
 
-  // Watch password cho PasswordStrengthBar
   const watchedPassword = newPasswordForm.watch('password', '');
 
-  // Countdown timer cho gửi lại OTP
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setInterval(() => {
@@ -70,33 +62,36 @@ const ChangePasswordPage: React.FC = () => {
   }, [countdown]);
 
   // Bước 1: Xác nhận mật khẩu hiện tại
-     // Thử gửi OTP nếu có Edge Function, nếu chưa deploy thì sang thẳng bước nhập mật khẩu mới
-   try {
-     const otpResponse = await otpService.sendOtp(profile.email, 'change_password');
-     if (otpResponse.data && !otpResponse.error) {
-       setCountdown(APP_CONFIG.OTP_RESEND_COOLDOWN_SECONDS);
-       setCurrentStep('otp');
-       showToast('Mã OTP đã được gửi đến email của bạn.', 'success');
-       return;
-     }
-   } catch (e) {
-     console.warn('Edge Function chưa được triển khai');
-   }
-
-   // Chuyển thẳng sang bước nhập mật khẩu mới vì đã xác thực đúng mật khẩu cũ
-   setCurrentStep('newPassword');
-   showToast('Xác nhận thành công! Hãy nhập mật khẩu mới.', 'success');
-
-      // Gửi OTP đến email
-      const otpResponse = await otpService.sendOtp(profile.email, 'change_password');
-      if (otpResponse.error) {
-        setError(otpResponse.error);
+  const handleVerifyCurrentPassword = async (data: CurrentPasswordFormData) => {
+    if (!profile?.email) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const isValid = await authService.verifyCurrentPassword(
+        profile.email,
+        data.currentPassword
+      );
+      if (!isValid) {
+        setError('Mật khẩu hiện tại không đúng.');
         return;
       }
 
-      setCountdown(APP_CONFIG.OTP_RESEND_COOLDOWN_SECONDS);
-      setCurrentStep('otp');
-      showToast('Mã OTP đã được gửi đến email của bạn.', 'success');
+      // Thử gửi OTP nếu có Edge Function, nếu chưa deploy thì cho phép sang thẳng bước đặt mật khẩu mới
+      try {
+        const otpResponse = await otpService.sendOtp(profile.email, 'change_password');
+        if (otpResponse.data && !otpResponse.error) {
+          setCountdown(APP_CONFIG.OTP_RESEND_COOLDOWN_SECONDS);
+          setCurrentStep('otp');
+          showToast('Mã OTP đã được gửi đến email của bạn.', 'success');
+          return;
+        }
+      } catch (e) {
+        console.warn('Edge Function chưa được triển khai');
+      }
+
+      // Fallback: Chuyển thẳng sang bước nhập mật khẩu mới vì đã xác thực đúng mật khẩu cũ
+      setCurrentStep('newPassword');
+      showToast('Xác nhận thành công! Hãy nhập mật khẩu mới.', 'success');
     } catch (err: any) {
       setError(err?.message || 'Xác nhận mật khẩu thất bại.');
     } finally {
@@ -175,7 +170,6 @@ const ChangePasswordPage: React.FC = () => {
     }
   };
 
-  // Render step indicator
   const renderStepIndicator = () => {
     const steps = [
       { key: 'verify', icon: KeyRound, label: 'Xác nhận' },
@@ -223,7 +217,6 @@ const ChangePasswordPage: React.FC = () => {
     );
   };
 
-  // Loading state
   if (authLoading) {
     return <LoadingSpinner fullScreen text="Đang tải..." />;
   }
@@ -231,7 +224,6 @@ const ChangePasswordPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-950 py-8 px-4">
       <div className="max-w-md mx-auto">
-        {/* Nút quay lại */}
         <button
           onClick={() => navigate('/dashboard')}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6"
@@ -240,10 +232,8 @@ const ChangePasswordPage: React.FC = () => {
           <span>Quay lại Dashboard</span>
         </button>
 
-        {/* Card đổi mật khẩu */}
         <div className="p-[1px] rounded-2xl bg-gradient-to-br from-purple-500 via-cyan-500 to-purple-500">
           <div className="bg-gray-900 rounded-2xl p-8">
-            {/* Tiêu đề */}
             <div className="text-center mb-4">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-600 mb-4">
                 <Lock className="w-8 h-8 text-white" />
@@ -256,10 +246,8 @@ const ChangePasswordPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Step indicator */}
             {renderStepIndicator()}
 
-            {/* Hiển thị lỗi */}
             {error && (
               <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -267,7 +255,6 @@ const ChangePasswordPage: React.FC = () => {
               </div>
             )}
 
-            {/* Step 1: Xác nhận mật khẩu hiện tại */}
             {currentStep === 'verify' && (
               <form
                 onSubmit={currentPasswordForm.handleSubmit(
@@ -300,10 +287,8 @@ const ChangePasswordPage: React.FC = () => {
               </form>
             )}
 
-            {/* Step 2: Nhập OTP */}
             {currentStep === 'otp' && (
               <div className="space-y-5">
-                {/* Thông báo email đã gửi */}
                 <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                   <p className="text-gray-400 text-sm">
                     Mã OTP đã được gửi đến
@@ -313,7 +298,6 @@ const ChangePasswordPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* OTP Input */}
                 <div className="flex justify-center">
                   <OtpInput
                     length={6}
@@ -322,7 +306,6 @@ const ChangePasswordPage: React.FC = () => {
                   />
                 </div>
 
-                {/* Countdown và nút gửi lại */}
                 <div className="text-center">
                   {countdown > 0 ? (
                     <p className="text-gray-500 text-sm">
@@ -344,7 +327,6 @@ const ChangePasswordPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Nút xác nhận */}
                 <Button
                   type="button"
                   variant="primary"
@@ -357,7 +339,6 @@ const ChangePasswordPage: React.FC = () => {
                   Xác nhận OTP
                 </Button>
 
-                {/* Nút quay lại */}
                 <button
                   type="button"
                   onClick={() => {
@@ -373,7 +354,6 @@ const ChangePasswordPage: React.FC = () => {
               </div>
             )}
 
-            {/* Step 3: Đặt mật khẩu mới */}
             {currentStep === 'newPassword' && (
               <form
                 onSubmit={newPasswordForm.handleSubmit(handleChangePassword)}
