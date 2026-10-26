@@ -40,20 +40,28 @@ const LoginPage: React.FC = () => {
   }, [user, authLoading, navigate]);
 
   // Xử lý đăng nhập
-  const onSubmit = async (data: LoginFormData) => {
-    setLoginError(null);
-    setIsSubmitting(true);
-    try {
-      await signIn(data.email, data.password);
+const onSubmit = async (data: LoginFormData) => {
+  setLoginError(null);
+  setIsSubmitting(true);
+  try {
+    const res = await signIn(data.email, data.password);
+    if (res?.error) {
+      setLoginError(res.error);
+      showToast(res.error, 'error');
+    } else {
       showToast('Đăng nhập thành công!', 'success');
-      navigate('/dashboard', { replace: true });
-    } catch (error: any) {
-      const message =
-        error?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
-      setLoginError(message);
-    } finally {
-      setIsSubmitting(false);
+      // Chuyển thẳng vào dashboard
+      window.location.hash = '#/dashboard';
     }
+  } catch (error: any) {
+    const message =
+      error?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
+    setLoginError(message);
+    showToast(message, 'error');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   };
 
   // Hiển thị loading khi đang kiểm tra auth
