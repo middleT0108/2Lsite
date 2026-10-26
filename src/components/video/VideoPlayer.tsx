@@ -50,14 +50,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Video Viewport */}
       <div className="relative aspect-video w-full bg-black flex items-center justify-center group">
         <video
-          ref={videoRef}
-          src={src}
-          poster={poster || undefined}
-          controls
-          className="w-full h-full object-contain focus:outline-none"
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-        >
+  ref={videoRef}
+  src={src}
+  poster={poster || undefined}
+  controls
+  preload="auto"
+  playsInline
+  className="w-full h-full object-contain focus:outline-none"
+  onPlay={() => setIsPlaying(true)}
+  onPause={() => setIsPlaying(false)}
+>
           Trình duyệt của bạn không hỗ trợ định dạng video này.
         </video>
       </div>
