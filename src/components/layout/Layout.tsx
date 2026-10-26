@@ -5,23 +5,24 @@ import MotionBackground from './MotionBackground';
 
 /**
  * Layout wrapper component
+ * - Motion background sống động toàn hệ thống
  * - Header cố định ở trên
  * - Main content area với container max-width
- * - Motion background sống động toàn hệ thống
  */
 const Layout: React.FC = () => {
   return (
-    <div className="min-h-screen text-slate-100 flex flex-col relative">
+    <div className="min-h-screen text-slate-100 flex flex-col relative z-0">
       {/* Motion Background chuyển động mượt mà */}
       <MotionBackground />
 
-      {/* Header */}
-      <Header />
+      {/* Wrapper nội dung phía trên background */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Header />
 
-      {/* Main content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 z-10">
-        <Outlet />
-      </main>
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };
