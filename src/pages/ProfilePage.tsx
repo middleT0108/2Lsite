@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Send,
-  ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
@@ -31,22 +31,38 @@ export const ProfilePage: React.FC = () => {
   const [usernameInput, setUsernameInput] = useState('');
   const [isSavingName, setIsSavingName] = useState(false);
 
-  // Tên người dùng hiển thị
   const [localUsername, setLocalUsername] = useState<string | null>(() => {
     return localStorage.getItem('2lsite_username');
   });
 
-  // Trạng thái xác minh Gmail THỰC TẾ: Chỉ true khi người dùng đã nhập mã xác thực
+  // Trạng thái xác minh Gmail THỰC TẾ
   const [isEmailConfirmed, setIsEmailConfirmed] = useState<boolean>(() => {
     return Boolean(user?.user_metadata?.gmail_verified);
   });
 
   const [sendingConfirm, setSendingConfirm] = useState(false);
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [hasSentLink, setHasSentLink] = useState(false);
 
-  // Kiểm tra trạng thái metadata mới nhất từ Supabase
+  // Tự động nhận diện khi người dùng click vào link trong Gmail mở về web
+  useEffect(() => {
+    const handleUrlVerification = async () => {
+      const hash = window.location.hash;
+      if (hash.includes('access_token=') || hash.includes('type=recovery')) {
+        try {
+          await supabase.auth.updateUser({
+            data: { gmail_verified: true, verified_at: new Date().toISOString() },
+          });
+          setIsEmailConfirmed(true);
+          showToast('Xác thực Gmail từ liên kết thành công!', 'success');
+        } catch (err) {
+          console.warn('Lỗi auto verify link:', err);
+        }
+      }
+    };
+    handleUrlVerification();
+  }, []);
+
+  // Kiểm tra trạng thái từ Supabase server
   useEffect(() => {
     const checkStatus = async () => {
       const { data } = await supabase.auth.getUser();
@@ -120,7 +136,7 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  // 1. Gửi mã xác nhận về Gmail
+  // Gửi link xác thực về Gmail
   const handleSendVerificationEmail = async () => {
     if (!user?.email || sendingConfirm) return;
     setSendingConfirm(true);
@@ -132,43 +148,12 @@ export const ProfilePage: React.FC = () => {
 
       if (error) throw error;
 
-      setShowOtpInput(true);
-      showToast('Đã gửi mã xác nhận 6 số về Gmail của bạn!', 'success');
+      setHasSentLink(true);
+      showToast('Đã gửi email xác thực! Vui lòng kiểm tra hộp thư của bạn.', 'success');
     } catch (err: any) {
       showToast(err?.message || 'Không thể gửi email lúc này. Vui lòng thử lại sau.', 'error');
     } finally {
       setSendingConfirm(false);
-    }
-  };
-
-  // 2. Xác thực mã 6 số người dùng nhập
-  const handleConfirmOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanOtp = otpCode.trim();
-    if (!cleanOtp) return showToast('Vui lòng nhập mã 6 số từ Gmail', 'error');
-
-    setIsVerifyingOtp(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: user!.email!,
-        token: cleanOtp,
-        type: 'recovery',
-      });
-
-      if (error) throw new Error('Mã xác nhận không đúng hoặc đã hết hạn.');
-
-      // ĐÁNH DẤU CHÍNH THỨC: gmail_verified = true
-      await supabase.auth.updateUser({
-        data: { gmail_verified: true, verified_at: new Date().toISOString() },
-      });
-
-      setIsEmailConfirmed(true);
-      setShowOtpInput(false);
-      showToast('Chúc mừng! Gmail của bạn đã được xác minh thành công.', 'success');
-    } catch (err: any) {
-      showToast(err?.message || 'Xác nhận thất bại', 'error');
-    } finally {
-      setIsVerifyingOtp(false);
     }
   };
 
@@ -324,34 +309,23 @@ export const ProfilePage: React.FC = () => {
                 onClick={handleSendVerificationEmail}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Gửi mã xác nhận Gmail
+                Gửi email xác thực
               </Button>
             )}
           </div>
         </div>
 
-        {/* Ô nhập mã OTP 6 số hiện ra sau khi bấm Gửi mã */}
-        {!isEmailConfirmed && showOtpInput && (
-          <form onSubmit={handleConfirmOtp} className="p-4 rounded-xl border border-purple-800/50 bg-purple-950/20 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-purple-300">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Nhập mã số xác nhận vừa gửi đến Gmail của bạn:</span>
+        {/* Hướng dẫn mở Gmail khi vừa bấm gửi */}
+        {!isEmailConfirmed && hasSentLink && (
+          <div className="p-4 rounded-xl border border-purple-800/50 bg-purple-950/30 text-xs text-purple-200 flex items-start gap-3">
+            <ExternalLink className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-purple-300">Đã gửi thư xác thực tới Gmail của bạn!</p>
+              <p className="text-slate-300 mt-1">
+                Vui lòng mở hòm thư Gmail (kiểm tra cả mục Spam/Thư rác) và bấm vào đường link trong thư để kích hoạt tài khoản.
+              </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value)}
-                placeholder="Nhập mã số từ Gmail"
-                className="flex-1 bg-slate-900 border border-purple-500/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400"
-                autoFocus
-              />
-              <Button type="submit" variant="primary" size="sm" loading={isVerifyingOtp}>
-                <Check className="w-4 h-4 mr-1.5" />
-                Xác nhận ngay
-              </Button>
-            </div>
-          </form>
+          </div>
         )}
       </div>
     </div>
