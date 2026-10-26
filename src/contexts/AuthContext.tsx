@@ -113,19 +113,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Đăng ký tài khoản mới
    * Sau khi đăng ký, user cần xác nhận email trước khi đăng nhập
    */
-  const signUp = useCallback(
-    async (email: string, password: string): Promise<{ error: string | null }> => {
-      const result = await authService.signUp(email, password);
-
+   const signUp = useCallback(
+    async (email: string, password: string, username?: string): Promise<{ error: string | null }> => {
+      const result = await authService.signUp(email, password, username);
       if (result.error) {
         return { error: result.error };
       }
-
       return { error: null };
     },
     []
   );
 
+  const updateProfile = useCallback(
+    async (updates: Partial<Profile>): Promise<{ error: string | null }> => {
+      if (!user) return { error: 'Chưa đăng nhập' };
+      const { data, error } = await authService.updateProfile(user.id, updates);
+      if (error) return { error };
+      if (data) setProfile(data);
+      return { error: null };
+    },
+    [user]
+  );
   /**
    * Đăng xuất - xóa session và reset state
    */
