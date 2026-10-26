@@ -1,406 +1,314 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import {
   KeyRound,
   ArrowLeft,
   Mail,
   ShieldCheck,
-  Lock,
   AlertCircle,
   RefreshCw,
-  Check,
+  CheckCircle2,
+  Send,
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
-import { otpService } from '../../services/otp.service';
-import { forgotPasswordSchema, resetPasswordSchema } from '../../lib/validators';
+import { supabase } from '../../lib/supabase';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import OtpInput from '../../components/auth/OtpInput';
-import PasswordStrengthBar from '../../components/ui/PasswordStrengthBar';
-import { APP_CONFIG } from '../../types';
 
-// Định nghĩa form types
-interface EmailFormData {
-  email: string;
-}
-
-interface ResetPasswordFormData {
-  password: string;
-  confirmPassword: string;
-}
-
-// Các bước trong quy trình quên mật khẩu
-type Step = 'email' | 'otp' | 'reset';
-
-const ForgotPasswordPage: React.FC = () => {
+export const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  // State quản lý
-  const [currentStep, setCurrentStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Bước 1: 'input_email' -> Bước 2: 'enter_otp' (gửi mã đổi mật khẩu về mail)
+  const [step, setStep] = useState<'input_email' | 'enter_otp'>('input_email');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Countdown cho gửi lại OTP (60 giây)
   const [countdown, setCountdown] = useState(0);
 
-  // Form cho bước nhập email
-  const emailForm = useForm<EmailFormData>({
-    resolver: zodResolver(forgotPasswordSchema),
-  });
-
-  // Form cho bước đặt mật khẩu mới
-  const resetForm = useForm<ResetPasswordFormData>({
-    resolver: zodResolver(resetPasswordSchema),
-  });
-
-  // Watch password cho PasswordStrengthBar
-  const watchedPassword = resetForm.watch('password', '');
-
-  // Xử lý countdown timer
+  // Đếm ngược 60 giây khi gửi lại mã
   useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Bước 1: Gửi OTP đến email
-  const handleSendOtp = async (data: EmailFormData) => {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      const response = await otpService.sendOtp(data.email, 'reset_password');
-      if (response.error) {
-        setError(response.error);
-        return;
-      }
-      setEmail(data.email);
-      setCountdown(APP_CONFIG.OTP_RESEND_COOLDOWN_SECONDS);
-      setCurrentStep('otp');
-      showToast('Mã OTP đã được gửi đến email của bạn.', 'success');
-    } catch (err: any) {
-      setError(err?.message || 'Không thể gửi mã OTP. Vui lòng thử lại.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Kiểm tra trạng thái xác thực của email trước khi gửi mã
+  const handleCheckEmailAndSendReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
 
-  // Gửi lại OTP
-  const handleResendOtp = useCallback(async () => {
-    if (countdown > 0) return;
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      const response = await otpService.sendOtp(email, 'reset_password');
-      if (response.error) {
-        setError(response.error);
-        return;
-      }
-      setCountdown(APP_CONFIG.OTP_RESEND_COOLDOWN_SECONDS);
-      showToast('Đã gửi lại mã OTP.', 'success');
-    } catch (err: any) {
-      setError(err?.message || 'Không thể gửi lại mã OTP.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [countdown, email, showToast]);
-
-  // Bước 2: Xác nhận OTP
-  const handleVerifyOtp = async () => {
-    if (otpCode.length !== 6) {
-      setError('Vui lòng nhập đầy đủ mã OTP.');
+    if (!cleanEmail) {
+      setError('Vui lòng nhập địa chỉ email');
       return;
     }
-    setError(null);
+
     setIsSubmitting(true);
+    setError(null);
+
     try {
-      const response = await otpService.verifyOtp(email, otpCode, 'reset_password');
-      if (response.error) {
-        setError(response.error);
-        return;
+      // 1. Kiểm tra tài khoản xem đã xác minh Gmail hay chưa
+      const { data: statusData, error: statusErr } = await supabase.rpc('check_user_email_status', {
+        user_email: cleanEmail,
+      });
+
+      if (!statusErr && statusData) {
+        if (!statusData.exists) {
+          setError('Email này chưa được đăng ký trong hệ thống');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // ĐIỀU KIỆN QUAN TRỌNG: Nếu mail chưa được xác minh trong tài khoản
+        if (!statusData.confirmed) {
+          setError('mail chưa được xác minh trong tài khoản');
+          setIsSubmitting(false);
+          return;
+        }
       }
-      if (response.data?.valid) {
-        setCurrentStep('reset');
-        showToast('Mã OTP hợp lệ!', 'success');
-      } else {
-        setError('Mã OTP không hợp lệ. Vui lòng thử lại.');
+
+      // 2. Nếu đã xác minh: Thực hiện gửi mã đổi mật khẩu về mail
+      const redirectUrl = window.location.origin + window.location.pathname + '#/reset-password';
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      if (resetErr) {
+        if (resetErr.message?.toLowerCase().includes('not confirmed')) {
+          setError('mail chưa được xác minh trong tài khoản');
+          setIsSubmitting(false);
+          return;
+        }
+        throw resetErr;
       }
+
+      // 3. Chuyển tiếp thành công sang bước "Gửi mã đổi mật khẩu về mail"
+      showToast('Đã gửi mã đổi mật khẩu về mail thành công!', 'success');
+      setStep('enter_otp');
+      setCountdown(60);
     } catch (err: any) {
-      setError(err?.message || 'Xác nhận OTP thất bại.');
+      setError(err?.message || 'Không thể gửi mã lúc này. Vui lòng thử lại sau.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Bước 3: Đặt mật khẩu mới
-  const handleResetPassword = async (data: ResetPasswordFormData) => {
+  // Xác nhận đổi mật khẩu với mã đã gửi về mail
+  const handleConfirmResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
+
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp) {
+      setError('Vui lòng nhập mã đổi mật khẩu từ email');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Mật khẩu mới tối thiểu 6 ký tự');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+
     setIsSubmitting(true);
+
     try {
-      const response = await otpService.resetPasswordWithOtp(
-        email,
-        otpCode,
-        data.password
-      );
-      if (response.error) {
-        setError(response.error);
-        return;
+      // Xác thực mã OTP loại recovery
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: cleanOtp,
+        type: 'recovery',
+      });
+
+      if (otpError) {
+        throw new Error('Mã đổi mật khẩu không đúng hoặc đã hết hạn.');
       }
-      showToast('Đặt lại mật khẩu thành công! Vui lòng đăng nhập.', 'success');
-      navigate('/login', { replace: true });
+
+      // Cập nhật mật khẩu mới
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      showToast('Đổi mật khẩu thành công! Đang chuyển đến trang đăng nhập...', 'success');
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 1500);
     } catch (err: any) {
-      setError(err?.message || 'Đặt lại mật khẩu thất bại.');
+      setError(err?.message || 'Có lỗi xảy ra khi đổi mật khẩu.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Render indicator cho các bước
-  const renderStepIndicator = () => {
-    const steps = [
-      { key: 'email', icon: Mail, label: 'Email' },
-      { key: 'otp', icon: ShieldCheck, label: 'OTP' },
-      { key: 'reset', icon: Lock, label: 'Mật khẩu' },
-    ];
-
-    const currentIndex = steps.findIndex((s) => s.key === currentStep);
-
-    return (
-      <div className="flex items-center justify-center gap-2 mb-8">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
-          const isActive = index === currentIndex;
-          const isCompleted = index < currentIndex;
-
-          return (
-            <React.Fragment key={step.key}>
-              {index > 0 && (
-                <div
-                  className={`h-0.5 w-8 rounded ${
-                    isCompleted ? 'bg-purple-500' : 'bg-gray-700'
-                  }`}
-                />
-              )}
-              <div
-                className={`flex items-center justify-center w-10 h-10 rounded-full transition-all ${
-                  isActive
-                    ? 'bg-purple-600 text-white ring-2 ring-purple-400/50'
-                    : isCompleted
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 text-gray-500'
-                }`}
-              >
-                {isCompleted ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <Icon className="w-5 h-5" />
-                )}
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
-    );
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 relative overflow-hidden px-4">
-      {/* Background */}
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 relative overflow-hidden px-4 py-12">
+      {/* Background Neon Grid Gaming */}
       <div
-        className="absolute inset-0 opacity-10"
+        className="absolute inset-0 opacity-15"
         style={{
           backgroundImage:
             'linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }}
       />
-      <div className="absolute top-1/4 right-1/3 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/3 left-1/4 w-80 h-80 bg-cyan-600/20 rounded-full blur-3xl" />
+      <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Card chính */}
       <div className="relative w-full max-w-md z-10">
-        <div className="p-[1px] rounded-2xl bg-gradient-to-br from-purple-500 via-cyan-500 to-purple-500">
-          <div className="bg-gray-900 rounded-2xl p-8">
-            {/* Tiêu đề */}
-            <div className="text-center mb-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-600 mb-4">
-                <KeyRound className="w-8 h-8 text-white" />
+        <div className="p-[1px] rounded-2xl bg-gradient-to-br from-purple-500/50 via-cyan-500/50 to-purple-500/50 shadow-2xl">
+          <div className="bg-slate-900/95 backdrop-blur-xl rounded-2xl p-7">
+            {/* Header Icon */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 shadow-lg shadow-purple-900/40 mb-3">
+                <KeyRound className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-white">Quên mật khẩu</h1>
-              <p className="text-gray-400 mt-2">
-                {currentStep === 'email' && 'Nhập email để nhận mã OTP'}
-                {currentStep === 'otp' && 'Nhập mã OTP đã gửi đến email'}
-                {currentStep === 'reset' && 'Đặt mật khẩu mới cho tài khoản'}
+              <h1 className="text-2xl font-bold text-white tracking-tight">Khôi phục mật khẩu</h1>
+              <p className="text-xs text-slate-400 mt-1">
+                {step === 'input_email'
+                  ? 'Chỉ tài khoản đã xác minh Gmail mới có thể khôi phục mật khẩu'
+                  : 'Gửi mã đổi mật khẩu về mail thành công'}
               </p>
             </div>
 
-            {/* Step indicator */}
-            {renderStepIndicator()}
-
-            {/* Hiển thị lỗi */}
+            {/* Thông báo lỗi (Hiển thị chính xác dòng lỗi theo yêu cầu) */}
             {error && (
-              <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-red-400 text-sm">{error}</p>
+              <div className="mb-5 p-3.5 rounded-xl bg-red-950/60 border border-red-800/80 text-red-300 text-xs flex items-start gap-2.5 shadow-lg animate-shake">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-400" />
+                <span className="font-medium leading-relaxed">{error}</span>
               </div>
             )}
 
-            {/* Step 1: Nhập email */}
-            {currentStep === 'email' && (
-              <form
-                onSubmit={emailForm.handleSubmit(handleSendOtp)}
-                className="space-y-5"
-              >
+            {/* BƯỚC 1: NHẬP EMAIL ĐỂ KIỂM TRA */}
+            {step === 'input_email' && (
+              <form onSubmit={handleCheckEmailAndSendReset} className="space-y-4">
                 <Input
-                  label="Email"
+                  label="Email tài khoản"
                   type="email"
-                  placeholder="your@email.com"
-                  error={emailForm.formState.errors.email?.message}
-                  {...emailForm.register('email')}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="name@gmail.com"
+                  required
+                  autoFocus
                 />
 
                 <Button
                   type="submit"
                   variant="primary"
-                  size="lg"
+                  size="md"
                   loading={isSubmitting}
                   className="w-full"
                 >
-                  <Mail className="w-5 h-5 mr-2" />
-                  Gửi mã OTP
+                  <Send className="w-4 h-4 mr-2" />
+                  Gửi mã đổi mật khẩu về mail
                 </Button>
+
+                <div className="pt-2 text-center">
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center text-xs text-slate-400 hover:text-white transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                    Quay lại đăng nhập
+                  </Link>
+                </div>
               </form>
             )}
 
-            {/* Step 2: Nhập OTP */}
-            {currentStep === 'otp' && (
+            {/* BƯỚC 2: TÀI KHOẢN ĐÃ XÁC MINH - NHẬP MÃ ĐỔI MẬT KHẨU TỪ EMAIL */}
+            {step === 'enter_otp' && (
               <div className="space-y-5">
-                {/* Thông báo email đã gửi */}
-                <div className="bg-gray-800/50 rounded-lg p-4 text-center">
-                  <p className="text-gray-400 text-sm">
-                    Mã OTP đã được gửi đến
+                <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-emerald-200 text-xs space-y-1.5">
+                  <div className="flex items-center gap-2 font-semibold text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Đã gửi mã đổi mật khẩu về mail!</span>
+                  </div>
+                  <p className="text-slate-300">
+                    Mã xác nhận đã gửi đến: <strong className="text-white">{email}</strong>
                   </p>
-                  <p className="text-cyan-400 font-semibold mt-1">{email}</p>
                 </div>
 
-                {/* OTP Input */}
-                <div className="flex justify-center">
-                  <OtpInput
-                    length={6}
-                    onComplete={(code) => setOtpCode(code)}
-                    disabled={isSubmitting}
+                <form onSubmit={handleConfirmResetPassword} className="space-y-4">
+                  <Input
+                    label="Mã đổi mật khẩu (Mã số trong email)"
+                    type="text"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="Nhập mã số nhận được"
+                    autoFocus
                   />
-                </div>
 
-                {/* Countdown và nút gửi lại */}
-                <div className="text-center">
-                  {countdown > 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      Gửi lại mã sau{' '}
-                      <span className="text-purple-400 font-semibold">
-                        {countdown}s
-                      </span>
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleResendOtp}
-                      disabled={isSubmitting}
-                      className="text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors inline-flex items-center gap-1"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Gửi lại mã
-                    </button>
-                  )}
-                </div>
-
-                {/* Nút xác nhận */}
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="lg"
-                  loading={isSubmitting}
-                  onClick={handleVerifyOtp}
-                  className="w-full"
-                >
-                  <ShieldCheck className="w-5 h-5 mr-2" />
-                  Xác nhận
-                </Button>
-
-                {/* Nút quay lại */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCurrentStep('email');
-                    setError(null);
-                    setOtpCode('');
-                  }}
-                  className="w-full text-gray-400 hover:text-gray-300 text-sm transition-colors flex items-center justify-center gap-1"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Quay lại nhập email
-                </button>
-              </div>
-            )}
-
-            {/* Step 3: Đặt mật khẩu mới */}
-            {currentStep === 'reset' && (
-              <form
-                onSubmit={resetForm.handleSubmit(handleResetPassword)}
-                className="space-y-5"
-              >
-                <div>
                   <Input
                     label="Mật khẩu mới"
                     type="password"
-                    placeholder="••••••••"
-                    error={resetForm.formState.errors.password?.message}
-                    {...resetForm.register('password')}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nhập bất kỳ ký tự nào (tối thiểu 6)"
                   />
-                  {watchedPassword && (
-                    <div className="mt-2">
-                      <PasswordStrengthBar password={watchedPassword} />
-                    </div>
-                  )}
+
+                  <Input
+                    label="Nhập lại mật khẩu mới"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Nhập lại mật khẩu trên"
+                  />
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    loading={isSubmitting}
+                    className="w-full"
+                  >
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                    Xác nhận đổi mật khẩu
+                  </Button>
+                </form>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('input_email');
+                      setError(null);
+                    }}
+                    className="text-slate-400 hover:text-white transition-colors"
+                  >
+                    ← Đổi email khác
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={countdown > 0 || isSubmitting}
+                    onClick={handleCheckEmailAndSendReset}
+                    className={`inline-flex items-center gap-1 ${
+                      countdown > 0
+                        ? 'text-slate-500 cursor-not-allowed'
+                        : 'text-purple-400 hover:text-purple-300'
+                    }`}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    {countdown > 0 ? `Gửi lại sau (${countdown}s)` : 'Gửi lại mã'}
+                  </button>
                 </div>
-
-                <Input
-                  label="Xác nhận mật khẩu mới"
-                  type="password"
-                  placeholder="••••••••"
-                  error={resetForm.formState.errors.confirmPassword?.message}
-                  {...resetForm.register('confirmPassword')}
-                />
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  loading={isSubmitting}
-                  className="w-full"
-                >
-                  <Lock className="w-5 h-5 mr-2" />
-                  Đặt mật khẩu mới
-                </Button>
-              </form>
+              </div>
             )}
-
-            {/* Link quay lại đăng nhập */}
-            <div className="mt-6 text-center">
-              <Link
-                to="/login"
-                className="text-gray-400 hover:text-gray-300 text-sm transition-colors inline-flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Quay lại đăng nhập
-              </Link>
-            </div>
           </div>
         </div>
       </div>
