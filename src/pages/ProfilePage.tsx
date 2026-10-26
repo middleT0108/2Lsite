@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
-  Lock,
   Palette,
   Check,
   ArrowLeft,
@@ -12,6 +11,10 @@ import {
   Sparkles,
   Smile,
   Save,
+  Mail,
+  MailCheck,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
@@ -29,6 +32,10 @@ export const ProfilePage: React.FC = () => {
   const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>('cyber-purple');
   const [usernameInput, setUsernameInput] = useState('');
   const [isSavingName, setIsSavingName] = useState(false);
+
+  // Trạng thái xác thực email
+  const isEmailConfirmed = Boolean(user?.email_confirmed_at);
+  const [sendingConfirm, setSendingConfirm] = useState(false);
 
   // Tên người dùng hiển thị: Ưu tiên username -> user_metadata -> tên trước dấu @ của email
   const displayName =
@@ -127,6 +134,30 @@ export const ProfilePage: React.FC = () => {
       showToast(err?.message || 'Không thể cập nhật tên', 'error');
     } finally {
       setIsSavingName(false);
+    }
+  };
+
+  // Gửi email xác nhận Gmail
+  const handleSendVerificationEmail = async () => {
+    if (!user?.email || sendingConfirm) return;
+    setSendingConfirm(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname + '#/verify-email',
+        },
+      });
+      if (error) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('Đã gửi email xác nhận! Vui lòng kiểm tra hộp thư đến (hoặc mục Spam).', 'success');
+      }
+    } catch (err: any) {
+      showToast('Không thể gửi email xác nhận lúc này.', 'error');
+    } finally {
+      setSendingConfirm(false);
     }
   };
 
@@ -269,31 +300,60 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Phần 3: Bảo mật & Tài khoản */}
+      {/* Phần 3: Xác thực Gmail & Bảo mật */}
       <div className="bg-surface-light/80 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex items-center space-x-3 pb-3 border-b border-slate-800">
           <div className="p-2 rounded-xl bg-indigo-900/40 text-indigo-400">
-            <Lock className="w-6 h-6" />
+            <Mail className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Bảo mật tài khoản</h2>
-            <p className="text-xs text-slate-400">Quản lý mật khẩu và các thiết lập đăng nhập cá nhân</p>
+            <h2 className="text-lg font-bold text-white">Xác thực Gmail</h2>
+            <p className="text-xs text-slate-400">
+              Xác thực địa chỉ email để bảo vệ tài khoản và khôi phục khi cần thiết
+            </p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl gap-4">
-          <div>
-            <p className="text-sm font-medium text-slate-200">Mật khẩu đăng nhập</p>
-            <p className="text-xs text-slate-400 mt-0.5">Thay đổi mật khẩu định kỳ để bảo vệ tài khoản tốt nhất</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-white">{profile?.email || user?.email}</span>
+              {isEmailConfirmed ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/40">
+                  <CheckCircle2 className="w-3 h-3" /> Đã xác nhận
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-950/80 text-amber-400 border border-amber-800/40">
+                  <AlertTriangle className="w-3 h-3" /> Chưa xác nhận
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400">
+              {isEmailConfirmed
+                ? 'Gmail của bạn đã được liên kết và xác minh an toàn.'
+                : 'Nhấn vào nút bên cạnh để gửi email liên kết xác minh tài khoản của bạn.'}
+            </p>
           </div>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/change-password')}
-          >
-            Đổi mật khẩu ngay
-          </Button>
+
+          <div>
+            {isEmailConfirmed ? (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-sm font-medium">
+                <Check className="w-4 h-4" /> Đã xác thực
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                loading={sendingConfirm}
+                onClick={handleSendVerificationEmail}
+                className="w-full sm:w-auto"
+              >
+                <MailCheck className="w-4 h-4 mr-2" />
+                Xác nhận Gmail
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
