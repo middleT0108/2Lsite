@@ -21,9 +21,14 @@ export const loginSchema = z.object({
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 
-/** Schema đăng ký - đơn giản hóa mật khẩu chỉ cần từ 6 ký tự */
+/** Schema đăng ký - bao gồm tên người dùng */
 export const registerSchema = z
   .object({
+    username: z
+      .string()
+      .min(2, 'Tên người dùng phải có ít nhất 2 ký tự')
+      .max(30, 'Tên người dùng tối đa 30 ký tự')
+      .regex(/^[\p{L}\p{N}_\s.]+$/u, 'Tên người dùng không được chứa ký tự đặc biệt'),
     email: z
       .string()
       .min(1, 'Email không được để trống')
@@ -39,7 +44,6 @@ export const registerSchema = z
     message: 'Mật khẩu xác nhận không khớp',
     path: ['confirmPassword'],
   });
-
 export type RegisterFormData = z.infer<typeof registerSchema>;
 
 /** Schema metadata video */
