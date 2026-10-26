@@ -4,6 +4,7 @@
 export interface Profile {
   id: string;
   email: string;
+  username?: string | null;
   role: 'user' | 'admin';
   is_banned: boolean;
   created_at: string;
