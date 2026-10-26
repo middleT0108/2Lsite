@@ -112,6 +112,14 @@ const RegisterPage: React.FC = () => {
 
             {/* Form đăng ký */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                <Input
+              label="Tên người dùng (Display Name)"
+              type="text"
+              placeholder="Ví dụ: FakerVN, GamerPro..."
+              error={errors.username?.message}
+              {...register('username')}
+  />
+              
               <Input
                 label="Email"
                 type="email"
