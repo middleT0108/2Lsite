@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Custom Scrollbar - Dark Theme ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f172a;
+}
+
+/* ===== Base Styles ===== */
+@layer base {
+  /* Đảm bảo toàn bộ trang có nền dark */
+  html {
+    @apply bg-surface;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface text-slate-100 min-h-screen;
+  }
+
+  /* Focus styles cho accessibility - viền tím gaming */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-surface;
+  }
+
+  /* Smooth transitions mặc định cho interactive elements */
+  a,
+  button,
+  input,
+  textarea,
+  select {
+    @apply transition-colors duration-200;
+  }
+
+  /* Custom selection color */
+  ::selection {
+    @apply bg-primary-600/40 text-white;
+  }
+}
+
+/* ===== Component Styles ===== */
+@layer components {
+  /* Card gaming style với border gradient */
+  .card-gaming {
+    @apply bg-surface-light rounded-xl border border-slate-700/50 
+           shadow-lg shadow-black/20 backdrop-blur-sm;
+  }
+
+  /* Card với hiệu ứng hover glow */
+  .card-gaming-hover {
+    @apply card-gaming hover:border-primary-500/50 
+           hover:shadow-primary-500/10 hover:shadow-xl
+           transition-all duration-300;
+  }
+
+  /* Nút primary - gradient tím */
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-600 to-primary-700 
+           text-white font-semibold px-6 py-2.5 rounded-lg
+           hover:from-primary-500 hover:to-primary-600
+           active:from-primary-700 active:to-primary-800
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200 shadow-lg shadow-primary-900/30;
+  }
+
+  /* Nút secondary - outline */
+  .btn-secondary {
+    @apply border border-slate-600 text-slate-300 
+           font-medium px-6 py-2.5 rounded-lg
+           hover:bg-surface-lighter hover:text-white hover:border-slate-500
+           active:bg-slate-600
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200;
+  }
+
+  /* Nút danger - đỏ */
+  .btn-danger {
+    @apply bg-red-600 text-white font-semibold px-6 py-2.5 rounded-lg
+           hover:bg-red-500 active:bg-red-700
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200;
+  }
+
+  /* Input field - dark theme */
+  .input-gaming {
+    @apply w-full bg-surface border border-slate-600 rounded-lg
+           px-4 py-2.5 text-slate-100 placeholder-slate-500
+           focus:border-primary-500 focus:ring-1 focus:ring-primary-500
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200;
+  }
+
+  /* Label */
+  .label-gaming {
+    @apply block text-sm font-medium text-slate-300 mb-1.5;
+  }
+
+  /* Badge / Tag */
+  .badge-gaming {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full 
+           text-xs font-medium bg-primary-900/50 text-primary-300
+           border border-primary-700/30;
+  }
+
+  /* Gaming gradient text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-400 to-accent bg-clip-text text-transparent;
+  }
+
+  /* Hiệu ứng glow cho border */
+  .border-glow {
+    @apply border border-primary-500/50 shadow-[0_0_15px_rgba(124,58,237,0.15)];
+  }
+
+  /* Container chính có max-width */
+  .container-gaming {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* ===== Utility Styles ===== */
+@layer utilities {
+  /* Gaming gradient backgrounds */
+  .bg-gaming-gradient {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  }
+
+  .bg-gaming-radial {
+    background: radial-gradient(ellipse at top, #1e1b4b 0%, #0f172a 70%);
+  }
+
+  /* Hiệu ứng glassmorphism */
+  .glass {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+
+  /* Text shadow cho headings */
+  .text-shadow-gaming {
+    text-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  }
+
+  /* Ẩn scrollbar nhưng vẫn scroll được */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Animation delay utilities */
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+}
+
+/* ===== Animations ===== */
+
+/* Fade in từ dưới lên */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* Fade in đơn giản */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Slide in từ phải */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+/* Slide out sang phải */
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.animate-slide-out-right {
+  animation: slideOutRight 0.3s ease-in forwards;
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    #1e293b 25%,
+    #334155 50%,
+    #1e293b 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Spin animation cho loading */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}
