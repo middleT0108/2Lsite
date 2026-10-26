@@ -8,24 +8,18 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../contexts/ToastContext';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import PasswordStrengthBar from '../../components/ui/PasswordStrengthBar';
 
-// Schema xác thực form đăng ký
+// Mật khẩu tự do bất kỳ ký tự nào, chỉ cần tối thiểu 6 ký tự theo chuẩn Supabase
 const registerFormSchema = z
   .object({
-    username: z
-      .string()
-      .min(2, 'Tên người dùng phải có ít nhất 2 ký tự')
-      .max(30, 'Tên người dùng tối đa 30 ký tự')
-      .optional()
-      .or(z.literal('')),
+    username: z.string().optional().or(z.literal('')),
     email: z
       .string()
       .min(1, 'Email không được để trống')
       .email('Email không hợp lệ'),
     password: z
       .string()
-      .min(8, 'Mật khẩu phải có ít nhất 8 ký tự'),
+      .min(6, 'Mật khẩu tối thiểu 6 ký tự (có thể dùng bất kỳ ký tự nào)'),
     confirmPassword: z
       .string()
       .min(1, 'Xác nhận mật khẩu không được để trống'),
@@ -39,7 +33,6 @@ type RegisterFormData = z.infer<typeof registerFormSchema>;
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  // Khai báo đầy đủ cả signUp và signIn từ useAuth để không bao giờ bị lỗi undefined
   const { user, loading: authLoading, signUp, signIn } = useAuth();
   const { showToast } = useToast();
   const [registerError, setRegisterError] = useState<string | null>(null);
@@ -48,7 +41,6 @@ export const RegisterPage: React.FC = () => {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerFormSchema),
@@ -60,39 +52,40 @@ export const RegisterPage: React.FC = () => {
     },
   });
 
-  const watchedPassword = watch('password', '');
-
-  // Redirect nếu đã đăng nhập từ trước
+  // Redirect nếu đã đăng nhập
   useEffect(() => {
     if (!authLoading && user) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
-  // Xử lý đăng ký
+  // Xử lý đăng ký: Đăng ký xong đăng nhập luôn vào thẳng Dashboard
   const onSubmit = async (data: RegisterFormData) => {
     setRegisterError(null);
     setIsSubmitting(true);
 
     try {
       const cleanUsername = data.username?.trim() || data.email.split('@')[0];
-      
-      // Lưu trước tên hiển thị vào bộ nhớ cục bộ
       localStorage.setItem('2lsite_username', cleanUsername);
 
+      // 1. Tạo tài khoản
       const res = await signUp(data.email.trim(), data.password, cleanUsername);
-      
       if (res?.error) {
         setRegisterError(res.error);
         return;
       }
 
-      showToast('Đăng ký thành công! Vui lòng kiểm tra Gmail để xác nhận tài khoản.', 'success');
-      // Chuyển sang trang hướng dẫn kiểm tra hòm thư Gmail
-      navigate('/verify-email', { replace: true });
+      // 2. Tự động đăng nhập luôn (bỏ qua bước xác minh email khi đăng ký)
+      try {
+        await signIn(data.email.trim(), data.password);
+      } catch (signInErr) {
+        console.warn('Auto sign-in fallback:', signInErr);
+      }
+
+      showToast(`Chào mừng ${cleanUsername}! Bạn có thể xác minh Gmail trong mục Hồ sơ.`, 'success');
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
-      const message = error?.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.';
-      setRegisterError(message);
+      setRegisterError(error?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +125,7 @@ export const RegisterPage: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1">Bắt đầu lưu trữ highlight gaming của bạn</p>
             </div>
 
-            {/* Thông báo lỗi tổng quát */}
+            {/* Thông báo lỗi nếu có */}
             {registerError && (
               <div className="mb-5 p-3 rounded-xl bg-red-950/50 border border-red-800/60 text-red-300 text-xs flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-400" />
@@ -142,50 +135,37 @@ export const RegisterPage: React.FC = () => {
 
             {/* Form đăng ký */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <Input
-                  label="Tên người dùng (Display Name)"
-                  type="text"
-                  placeholder="Ví dụ: Trung, GamerPro..."
-                  error={errors.username?.message}
-                  {...register('username')}
-                />
-              </div>
+              <Input
+                label="Tên người dùng (Display Name)"
+                type="text"
+                placeholder="Ví dụ: Trung, GamerPro..."
+                error={errors.username?.message}
+                {...register('username')}
+              />
 
-              <div>
-                <Input
-                  label="Email"
-                  type="email"
-                  placeholder="name@gmail.com"
-                  error={errors.email?.message}
-                  {...register('email')}
-                />
-              </div>
+              <Input
+                label="Email"
+                type="email"
+                placeholder="name@gmail.com"
+                error={errors.email?.message}
+                {...register('email')}
+              />
 
-              <div>
-                <Input
-                  label="Mật khẩu"
-                  type="password"
-                  placeholder="Tối thiểu 8 ký tự"
-                  error={errors.password?.message}
-                  {...register('password')}
-                />
-                {watchedPassword && (
-                  <div className="mt-2">
-                    <PasswordStrengthBar password={watchedPassword} />
-                  </div>
-                )}
-              </div>
+              <Input
+                label="Mật khẩu"
+                type="password"
+                placeholder="Nhập bất kỳ ký tự nào (tối thiểu 6)"
+                error={errors.password?.message}
+                {...register('password')}
+              />
 
-              <div>
-                <Input
-                  label="Xác nhận mật khẩu"
-                  type="password"
-                  placeholder="Nhập lại mật khẩu"
-                  error={errors.confirmPassword?.message}
-                  {...register('confirmPassword')}
-                />
-              </div>
+              <Input
+                label="Xác nhận mật khẩu"
+                type="password"
+                placeholder="Nhập lại mật khẩu trên"
+                error={errors.confirmPassword?.message}
+                {...register('confirmPassword')}
+              />
 
               <Button
                 type="submit"
@@ -195,11 +175,10 @@ export const RegisterPage: React.FC = () => {
                 className="w-full mt-2"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Đăng ký
+                Đăng ký & Vào trang chủ
               </Button>
             </form>
 
-            {/* Footer chuyển sang đăng nhập */}
             <div className="mt-6 pt-4 border-t border-slate-800 text-center">
               <p className="text-xs text-slate-400">
                 Đã có tài khoản?{' '}
