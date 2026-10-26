@@ -22,12 +22,12 @@ import { classNames } from '../../lib/utils';
 
 /**
  * Header/Navbar component
- * - Logo GameClips bên trái
+ * - Logo 2Lsite bên trái
  * - Navigation links: Dashboard, Upload (khi đã đăng nhập)
+ * - Dropdown phần mềm quay highlight (Outplayed, Medal.tv, Insights)
  * - Admin link (khi isAdmin)
- * - User menu dropdown bên phải
- * - Responsive: hamburger menu trên mobile
- * - Sticky top, backdrop blur
+ * - Tên người dùng hiển thị (thay vì Gmail) kèm avatar
+ * - User menu dropdown & Responsive mobile menu
  */
 const Header: React.FC = () => {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -100,6 +100,15 @@ const Header: React.FC = () => {
     navigate('/login');
   };
 
+  // Tên người dùng hiển thị: Ưu tiên username -> user_metadata -> tên trước dấu @ của email
+  const displayName =
+    profile?.username ||
+    (user?.user_metadata?.username as string) ||
+    (user?.user_metadata?.display_name as string) ||
+    profile?.email?.split('@')[0] ||
+    user?.email?.split('@')[0] ||
+    'User';
+
   // Navigation links cấu hình
   const navLinks = [
     {
@@ -157,6 +166,7 @@ const Header: React.FC = () => {
                 </Link>
               );
             })}
+
             {/* === Dropdown: Phần mềm quay highlight === */}
             <div ref={toolsMenuRef} className="relative">
               <button
@@ -181,7 +191,7 @@ const Header: React.FC = () => {
               </button>
 
               {isToolsMenuOpen && (
-                <div className="absolute left-0 top-full mt-2 w-64 bg-slate-850 bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl animate-in fade-in duration-150">
+                <div className="absolute left-0 top-full mt-2 w-64 bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl animate-in fade-in duration-150">
                   <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
                     Phần mềm khuyên dùng
                   </div>
@@ -246,7 +256,7 @@ const Header: React.FC = () => {
             {user ? (
               /* User menu dropdown */
               <div ref={userMenuRef} className="relative">
-                {/* Trigger button */}
+                {/* Trigger button hiển thị tên người dùng */}
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className={classNames(
@@ -256,12 +266,12 @@ const Header: React.FC = () => {
                     isUserMenuOpen && 'bg-slate-800 text-white'
                   )}
                 >
-                  {/* Avatar placeholder */}
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
+                  {/* Avatar chữ cái đầu của Tên người dùng */}
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center font-bold text-xs text-white shadow-sm">
+                    {displayName.charAt(0).toUpperCase()}
                   </div>
-                  <span className="max-w-[150px] truncate">
-                    {profile?.email || user.email}
+                  <span className="max-w-[150px] truncate font-medium">
+                    {displayName}
                   </span>
                   <ChevronDown
                     className={classNames(
@@ -282,13 +292,16 @@ const Header: React.FC = () => {
                       'animate-in fade-in slide-in-from-top-2 duration-150'
                     )}
                   >
-                    {/* Email hiển thị */}
+                    {/* Tên & Email hiển thị */}
                     <div className="px-4 py-3 border-b border-slate-700">
-                      <p className="text-sm font-medium text-white truncate">
+                      <p className="text-sm font-semibold text-white truncate">
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">
                         {profile?.email || user.email}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {isAdmin ? 'Quản trị viên' : 'Người dùng'}
+                      <p className="text-[11px] text-purple-400 font-medium mt-1">
+                        {isAdmin ? 'Quản trị viên' : 'Thành viên'}
                       </p>
                     </div>
 
@@ -419,9 +432,12 @@ const Header: React.FC = () => {
             {user ? (
               <>
                 <div className="border-t border-slate-700/50 my-2 pt-2">
-                  {/* Email */}
+                  {/* Tên người dùng & Email trên mobile */}
                   <div className="px-3 py-2">
-                    <p className="text-sm text-slate-400 truncate">
+                    <p className="text-sm font-semibold text-white truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-slate-400 truncate mt-0.5">
                       {profile?.email || user.email}
                     </p>
                   </div>
