@@ -12,6 +12,8 @@ import {
   X,
   ChevronDown,
   MailCheck,
+  Video,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -67,6 +69,9 @@ const Header: React.FC = () => {
   // Ref để đóng dropdown khi click bên ngoài
   const userMenuRef = useRef<HTMLDivElement>(null);
 
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
+
   // Đóng dropdown khi click bên ngoài
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -75,6 +80,12 @@ const Header: React.FC = () => {
         !userMenuRef.current.contains(event.target as Node)
       ) {
         setIsUserMenuOpen(false);
+      }
+      if (
+        toolsMenuRef.current &&
+        !toolsMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsToolsMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -146,6 +157,88 @@ const Header: React.FC = () => {
                 </Link>
               );
             })}
+            {/* === Dropdown: Phần mềm quay highlight === */}
+            <div ref={toolsMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+                className={classNames(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg',
+                  'text-sm font-medium text-slate-300',
+                  'hover:text-white hover:bg-slate-800',
+                  'transition-colors duration-150',
+                  isToolsMenuOpen && 'bg-slate-800 text-purple-400'
+                )}
+              >
+                <Video className="w-4 h-4 text-purple-400" />
+                <span>Phần mềm quay highlight</span>
+                <ChevronDown
+                  className={classNames(
+                    'w-3.5 h-3.5 transition-transform duration-200',
+                    isToolsMenuOpen && 'rotate-180'
+                  )}
+                />
+              </button>
+
+              {isToolsMenuOpen && (
+                <div className="absolute left-0 top-full mt-2 w-64 bg-slate-850 bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl animate-in fade-in duration-150">
+                  <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                    Phần mềm khuyên dùng
+                  </div>
+
+                  {/* Outplayed */}
+                  <a
+                    href="https://outplayed.tv/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsToolsMenuOpen(false)}
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-purple-950/40 hover:text-white text-slate-300 transition-colors group mt-1"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-white group-hover:text-purple-300">
+                        Outplayed
+                      </p>
+                      <p className="text-xs text-slate-400">Tự động bắt khoảnh khắc Kill/Death</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-purple-400" />
+                  </a>
+
+                  {/* Medal.tv */}
+                  <a
+                    href="https://medal.tv/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsToolsMenuOpen(false)}
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-cyan-950/40 hover:text-white text-slate-300 transition-colors group"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-white group-hover:text-cyan-300">
+                        Medal.tv
+                      </p>
+                      <p className="text-xs text-slate-400">Clip 2 phút phím tắt, không giật lag</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-cyan-400" />
+                  </a>
+
+                  {/* Insights Capture */}
+                  <a
+                    href="https://insights.gg/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsToolsMenuOpen(false)}
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-emerald-950/40 hover:text-white text-slate-300 transition-colors group"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-white group-hover:text-emerald-300">
+                        Insights Capture
+                      </p>
+                      <p className="text-xs text-slate-400">Phân tích highlight & review trận đấu</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-emerald-400" />
+                  </a>
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* === Phần bên phải: User menu hoặc nút login === */}
@@ -287,6 +380,40 @@ const Header: React.FC = () => {
                 </Link>
               );
             })}
+
+            {/* Menu phần mềm quay trên mobile */}
+            <div className="border-t border-slate-700/50 my-2 pt-2">
+              <p className="px-3 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Phần mềm quay highlight
+              </p>
+              <a
+                href="https://outplayed.tv/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <span>Outplayed</span>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+              </a>
+              <a
+                href="https://medal.tv/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <span>Medal.tv</span>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+              </a>
+              <a
+                href="https://insights.gg/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <span>Insights Capture</span>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+              </a>
+            </div>
 
             {/* User section trên mobile */}
             {user ? (
