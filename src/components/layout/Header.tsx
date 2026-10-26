@@ -11,8 +11,11 @@ import {
   Menu,
   X,
   ChevronDown,
+  MailCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import { supabase } from '../../lib/supabase';
 import { classNames } from '../../lib/utils';
 
 /**
@@ -26,7 +29,35 @@ import { classNames } from '../../lib/utils';
  */
 const Header: React.FC = () => {
   const { user, profile, isAdmin, signOut } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
+
+  // Kiểm tra email đã xác nhận chưa từ user object của Supabase
+  const isEmailConfirmed = Boolean(user?.email_confirmed_at);
+  const [sendingConfirm, setSendingConfirm] = useState(false);
+
+  const handleSendVerificationEmail = async () => {
+    if (!user?.email || sendingConfirm) return;
+    setSendingConfirm(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname + '#/verify-email',
+        },
+      });
+      if (error) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('Đã gửi email xác nhận! Vui lòng kiểm tra hộp thư của bạn.', 'success');
+      }
+    } catch (err: any) {
+      showToast('Không thể gửi email xác nhận lúc này.', 'error');
+    } finally {
+      setSendingConfirm(false);
+    }
+  };
 
   // State cho dropdown user menu
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -170,6 +201,18 @@ const Header: React.FC = () => {
 
                     {/* Menu items */}
                     <div className="py-1">
+                      {/* Nút gửi email xác nhận nếu chưa xác nhận */}
+                      {!isEmailConfirmed && (
+                        <button
+                          onClick={handleSendVerificationEmail}
+                          disabled={sendingConfirm}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 transition-colors"
+                        >
+                          <MailCheck className="w-4 h-4" />
+                          {sendingConfirm ? 'Đang gửi mail...' : 'Xác nhận Gmail'}
+                        </button>
+                      )}
+
                       <Link
                         to="/change-password"
                         onClick={() => setIsUserMenuOpen(false)}

@@ -50,13 +50,21 @@ const RegisterPage: React.FC = () => {
     setRegisterError(null);
     setIsSubmitting(true);
     try {
-      await signUp(data.email, data.password);
-      showToast('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.', 'success');
-      navigate('/verify-email', { replace: true });
+      const res = await signUp(data.email, data.password);
+      if (res?.error) {
+        setRegisterError(res.error);
+        showToast(res.error, 'error');
+      } else {
+        // Tự động đăng nhập luôn sau khi đăng ký
+        await signIn(data.email, data.password);
+        showToast('Đăng ký tài khoản thành công!', 'success');
+        window.location.hash = '#/dashboard';
+      }
     } catch (error: any) {
       const message =
         error?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
       setRegisterError(message);
+      showToast(message, 'error');
     } finally {
       setIsSubmitting(false);
     }

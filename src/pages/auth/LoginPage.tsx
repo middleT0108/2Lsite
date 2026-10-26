@@ -10,6 +10,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { APP_CONFIG } from '../../types';
 
+// Định nghĩa type cho form đăng nhập
 interface LoginFormData {
   email: string;
   password: string;
@@ -22,6 +23,7 @@ const LoginPage: React.FC = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Cấu hình react-hook-form với zod validation
   const {
     register,
     handleSubmit,
@@ -30,12 +32,14 @@ const LoginPage: React.FC = () => {
     resolver: zodResolver(loginSchema),
   });
 
+  // Redirect nếu đã đăng nhập
   useEffect(() => {
     if (!authLoading && user) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
+  // Xử lý đăng nhập
   const onSubmit = async (data: LoginFormData) => {
     setLoginError(null);
     setIsSubmitting(true);
@@ -46,7 +50,7 @@ const LoginPage: React.FC = () => {
         showToast(res.error, 'error');
       } else {
         showToast('Đăng nhập thành công!', 'success');
-        window.location.hash = '#/dashboard';
+        navigate('/dashboard', { replace: true });
       }
     } catch (error: any) {
       const message =
@@ -58,6 +62,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  // Hiển thị loading khi đang kiểm tra auth
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950">
@@ -68,6 +73,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 relative overflow-hidden px-4">
+      {/* Background grid pattern */}
       <div
         className="absolute inset-0 opacity-10"
         style={{
@@ -77,12 +83,16 @@ const LoginPage: React.FC = () => {
         }}
       />
 
+      {/* Gradient orbs trang trí */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl" />
 
+      {/* Card đăng nhập */}
       <div className="relative w-full max-w-md z-10">
+        {/* Gradient border wrapper */}
         <div className="p-[1px] rounded-2xl bg-gradient-to-br from-purple-500 via-cyan-500 to-purple-500">
           <div className="bg-gray-900 rounded-2xl p-8">
+            {/* Logo và tiêu đề */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-600 mb-4">
                 <Gamepad2 className="w-8 h-8 text-white" />
@@ -95,6 +105,7 @@ const LoginPage: React.FC = () => {
               </p>
             </div>
 
+            {/* Hiển thị lỗi đăng nhập */}
             {loginError && (
               <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -102,6 +113,7 @@ const LoginPage: React.FC = () => {
               </div>
             )}
 
+            {/* Form đăng nhập */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <Input
                 label="Email"
@@ -119,6 +131,7 @@ const LoginPage: React.FC = () => {
                 {...register('password')}
               />
 
+              {/* Link quên mật khẩu */}
               <div className="flex justify-end">
                 <Link
                   to="/forgot-password"
@@ -128,6 +141,7 @@ const LoginPage: React.FC = () => {
                 </Link>
               </div>
 
+              {/* Nút đăng nhập */}
               <Button
                 type="submit"
                 variant="primary"
@@ -140,6 +154,7 @@ const LoginPage: React.FC = () => {
               </Button>
             </form>
 
+            {/* Link đăng ký */}
             <div className="mt-6 text-center">
               <p className="text-gray-400 text-sm">
                 Chưa có tài khoản?{' '}

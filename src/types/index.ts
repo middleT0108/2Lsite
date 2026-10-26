@@ -84,5 +84,5 @@ export const APP_CONFIG = {
   OTP_MAX_ATTEMPTS: 5,
   OTP_RESEND_COOLDOWN_SECONDS: 60,
   SIGNED_URL_EXPIRY_SECONDS: 3600,
-  APP_NAME: (import.meta.env.VITE_APP_NAME as string) || '2Lsite',
+  APP_NAME: '2Lsite',
 } as const;
