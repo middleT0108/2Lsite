@@ -33,12 +33,18 @@ export const ProfilePage: React.FC = () => {
   const [usernameInput, setUsernameInput] = useState('');
   const [isSavingName, setIsSavingName] = useState(false);
 
+  // Tên người dùng realtime
+  const [localUsername, setLocalUsername] = useState<string | null>(() => {
+    return localStorage.getItem('2lsite_username');
+  });
+
   // Trạng thái xác thực email
   const isEmailConfirmed = Boolean(user?.email_confirmed_at);
   const [sendingConfirm, setSendingConfirm] = useState(false);
 
-  // Tên người dùng hiển thị: Ưu tiên username -> user_metadata -> tên trước dấu @ của email
+  // Tên người dùng hiển thị: Ưu tiên localUsername -> username -> user_metadata -> tên trước dấu @ của email
   const displayName =
+    localUsername ||
     profile?.username ||
     (user?.user_metadata?.username as string) ||
     (user?.user_metadata?.display_name as string) ||
@@ -53,14 +59,16 @@ export const ProfilePage: React.FC = () => {
 
   // Điền tên người dùng hiện tại vào ô input
   useEffect(() => {
-    if (profile?.username) {
+    if (localUsername) {
+      setUsernameInput(localUsername);
+    } else if (profile?.username) {
       setUsernameInput(profile.username);
     } else if (user?.user_metadata?.username) {
       setUsernameInput(user.user_metadata.username as string);
     } else if (user?.email) {
       setUsernameInput(user.email.split('@')[0]);
     }
-  }, [profile?.username, user]);
+  }, [localUsername, profile?.username, user]);
 
   const themes: { id: BackgroundTheme; name: string; desc: string; colors: string }[] = [
     {
@@ -119,16 +127,26 @@ export const ProfilePage: React.FC = () => {
 
     setIsSavingName(true);
     try {
-      if (updateProfile) {
-        const res = await updateProfile({ username: clean });
-        if (res?.error) {
-          showToast(res.error, 'error');
-          return;
-        }
-      } else if (user?.id) {
+      // 1. Cập nhật ngay lập tức giao diện (0ms latency, Header + Profile cập nhật lập tức)
+      setLocalUsername(clean);
+      localStorage.setItem('2lsite_username', clean);
+      window.dispatchEvent(new CustomEvent('2lsite-username-change', { detail: clean }));
+
+      // 2. Cập nhật vào Supabase Auth User Metadata
+      await supabase.auth.updateUser({
+        data: { username: clean, display_name: clean },
+      });
+
+      // 3. Cập nhật vào bảng profiles (nếu đã có cột username)
+      if (user?.id) {
         await supabase.from('profiles').update({ username: clean }).eq('id', user.id);
-        await supabase.auth.updateUser({ data: { username: clean, display_name: clean } });
       }
+
+      // 4. Gọi updateProfile từ context nếu có
+      if (updateProfile) {
+        await updateProfile({ username: clean });
+      }
+
       showToast('Cập nhật tên người dùng thành công!', 'success');
     } catch (err: any) {
       showToast(err?.message || 'Không thể cập nhật tên', 'error');
