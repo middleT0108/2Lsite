@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { loginSchema } from '../../lib/validators';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import MotionBackground from '../../components/layout/MotionBackground';
 import { APP_CONFIG } from '../../types';
 
 // Định nghĩa type cho form đăng nhập
@@ -72,26 +73,15 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 relative overflow-hidden px-4">
-      {/* Background grid pattern */}
-      <div
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-
-      {/* Gradient orbs trang trí */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl" />
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4">
+      {/* Motion Background sống động */}
+      <MotionBackground />
 
       {/* Card đăng nhập */}
       <div className="relative w-full max-w-md z-10">
         {/* Gradient border wrapper */}
-        <div className="p-[1px] rounded-2xl bg-gradient-to-br from-purple-500 via-cyan-500 to-purple-500">
-          <div className="bg-gray-900 rounded-2xl p-8">
+        <div className="p-[1px] rounded-2xl bg-gradient-to-br from-purple-500/80 via-cyan-500/80 to-purple-500/80 shadow-2xl shadow-purple-950/50">
+          <div className="bg-gray-900/90 rounded-2xl p-8 backdrop-blur-md">
             {/* Logo và tiêu đề */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-600 mb-4">

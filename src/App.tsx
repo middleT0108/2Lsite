@@ -17,6 +17,7 @@ import ChangePasswordPage from './pages/auth/ChangePasswordPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import UploadPage from './pages/dashboard/UploadPage';
 import VideoDetailPage from './pages/dashboard/VideoDetailPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Admin pages - cần quyền admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -48,6 +49,7 @@ function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/upload" element={<UploadPage />} />
                 <Route path="/video/:id" element={<VideoDetailPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/change-password" element={<ChangePasswordPage />} />
               </Route>
             </Route>

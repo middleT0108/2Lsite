@@ -213,12 +213,22 @@ const Header: React.FC = () => {
                         </button>
                       )}
 
+                      {/* Menu Hồ sơ cá nhân */}
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+                      >
+                        <User className="w-4 h-4 text-purple-400" />
+                        Hồ sơ & Giao diện
+                      </Link>
+
                       <Link
                         to="/change-password"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
                       >
-                        <KeyRound className="w-4 h-4" />
+                        <KeyRound className="w-4 h-4 text-slate-400" />
                         Đổi mật khẩu
                       </Link>
                       <button

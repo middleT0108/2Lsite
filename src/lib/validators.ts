@@ -21,7 +21,7 @@ export const loginSchema = z.object({
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 
-/** Schema đăng ký - mật khẩu phải đủ mạnh */
+/** Schema đăng ký - đơn giản hóa mật khẩu chỉ cần từ 6 ký tự */
 export const registerSchema = z
   .object({
     email: z
