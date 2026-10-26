@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Download, Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
 import Button from '../ui/Button';
+import DownloadQualityModal from './DownloadQualityModal';
 
 interface VideoPlayerProps {
   src: string;
@@ -12,12 +13,13 @@ interface VideoPlayerProps {
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   src,
   poster,
-  title: _title,
+  title,
   downloadFilename = 'gameclip.mp4',
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -96,20 +98,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </Button>
         </div>
 
-        {/* Nút Tải xuống có signed URL an toàn */}
+        {/* Nút Tải xuống với tùy chọn chất lượng */}
         <div>
-          <a
-            href={src}
-            download={downloadFilename}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 hover:bg-primary-500 text-white transition-colors shadow-md shadow-primary-900/30"
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => setIsDownloadModalOpen(true)}
+            className="shadow-md shadow-primary-900/30"
           >
             <Download className="w-4 h-4 mr-2" />
             Tải video xuống
-          </a>
+          </Button>
         </div>
       </div>
+
+      {/* Modal chọn chất lượng tải xuống */}
+      <DownloadQualityModal
+        isOpen={isDownloadModalOpen}
+        onClose={() => setIsDownloadModalOpen(false)}
+        videoUrl={src}
+        videoTitle={title || downloadFilename}
+      />
     </div>
   );
 };
